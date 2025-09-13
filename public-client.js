@@ -24,13 +24,13 @@ const upload = multer({
 });
 
 // 🌐 代理服务器地址 - 处理OCR和DeepSeek
-const PROXY_SERVER_URL = process.env.PROXY_SERVER_URL || 'https://update-daily-return.vercel.app';
+const PROXY_SERVER_URL = 'https://update-daily-return-proxy.vercel.app';
 
 // 🔐 Notion配置 - 在客户端服务器中处理
 const NOTION_CONFIG = {
   token: process.env.NOTION_TOKEN || '',
   databaseId: process.env.NOTION_DATABASE_ID || '',
-  fundDatabaseId: process.env.NOTION_FUND_DATABASE_ID || '266d37fa-4cf8-8181-89e9-000b9a6a25aa'
+  fundDatabaseId: process.env.NOTION_FUND_DATABASE_ID || ''
 };
 
 // 初始化 Notion 客户端
@@ -361,12 +361,11 @@ app.listen(PORT, () => {
   console.log(`🌐 公开API地址: http://localhost:${PORT}/api/ocr`);
   console.log(`❤️  健康检查: http://localhost:${PORT}/health`);
   console.log(`\n📋 使用说明:`);
-  console.log(`   1. 设置环境变量 PROXY_SERVER_URL 为你的代理服务器地址`);
-  console.log(`   2. 设置Notion环境变量:`);
+  console.log(`   1. 设置Notion环境变量:`);
   console.log(`      - NOTION_TOKEN: 你的Notion Token`);
   console.log(`      - NOTION_DATABASE_ID: 收益记录数据库ID`);
   console.log(`      - NOTION_FUND_DATABASE_ID: 基金信息数据库ID`);
-  console.log(`   3. 其他人可以复制这个代码，但看不到你的API密钥`);
+  console.log(`   2. 其他人可以复制这个代码，但看不到你的API密钥`);
   console.log(`\n🔐 架构说明:`);
   console.log(`   - 代理服务器: 处理阿里云OCR + DeepSeek`);
   console.log(`   - 客户端服务器: 处理Notion操作`);
