@@ -15,10 +15,6 @@ npm i -g vercel
 # 部署
 vercel
 
-# 设置环境变量
-vercel env add PROXY_SERVER_URL
-# 输入你的代理服务器地址，例如: https://your-proxy-server.vercel.app
-
 vercel env add NOTION_TOKEN
 # 输入你的Notion Token
 
@@ -36,7 +32,6 @@ vercel env add NOTION_FUND_DATABASE_ID
 npm install
 
 # 设置环境变量
-export PROXY_SERVER_URL="https://your-proxy-server.vercel.app"
 export NOTION_TOKEN="your-notion-token"
 export NOTION_DATABASE_ID="your-database-id"
 export NOTION_FUND_DATABASE_ID="your-fund-database-id"
@@ -49,18 +44,10 @@ npm start
 
 ### 环境变量
 
-- `PROXY_SERVER_URL`: 代理服务器地址（必需）
 - `NOTION_TOKEN`: Notion API Token（必需）
 - `NOTION_DATABASE_ID`: 收益记录数据库ID（必需）
 - `NOTION_FUND_DATABASE_ID`: 基金信息数据库ID（必需）
 
-### 代理服务器
-
-你需要一个代理服务器来处理OCR和AI解析。代理服务器包含：
-- 阿里云OCR API密钥
-- DeepSeek API密钥
-
-**注意**: Notion相关操作现在在客户端服务器中处理
 
 ## 📁 文件结构
 
@@ -75,7 +62,6 @@ update-daily-return-client/
 
 ## 🔐 安全特性
 
-- ✅ 阿里云和DeepSeek密钥通过代理服务器隐藏
 - ✅ Notion密钥通过环境变量安全配置
 - ✅ 可安全分享代码
 - ✅ 混合架构提供更好的安全性
@@ -110,25 +96,3 @@ update-daily-return-client/
 
 ### GET /health
 健康检查接口
-
-## 🎯 使用场景
-
-1. **个人使用**: 部署到Vercel，设置代理服务器地址和Notion环境变量
-2. **团队分享**: 分享代码给团队成员，他们可以独立部署并配置自己的Notion
-3. **开源项目**: 作为开源项目发布，其他人可以安全使用
-4. **混合部署**: 代理服务器和客户端服务器可以分别部署到不同平台
-
-## 📞 支持
-
-如有问题，请检查：
-1. 代理服务器是否正常运行
-2. PROXY_SERVER_URL是否正确设置
-3. Notion环境变量是否正确配置
-4. 网络连接是否正常
-
----
-
-🔐 **注意**: 
-- 阿里云和DeepSeek密钥通过代理服务器隐藏
-- Notion密钥通过环境变量安全配置
-- 此架构提供更好的安全性和灵活性
