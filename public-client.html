@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基金收益识别工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: white;
+            color: #1a1a1a;
+            min-height: 100vh;
+            padding: 8px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        /* 夜间模式 */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #1a1a1a;
+                color: #e5e5e5;
+            }
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0;
+            background: white;
+            transition: background-color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .container {
+                background: #1a1a1a;
+            }
+        }
+        
+        .content {
+            padding: 8px;
+        }
+        
+        .upload-section {
+            margin-bottom: 8px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #e2e8f0;
+            border-radius: 10px;
+            padding: 15px 12px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f8fafc;
+        }
+        
+        .upload-area:hover {
+            border-color: #4facfe;
+            background: #f0f9ff;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .upload-area {
+                border-color: #4a5568;
+                background: #2d3748;
+                color: #e5e5e5;
+            }
+            
+            .upload-area:hover {
+                border-color: #63b3ed;
+                background: #2a4365;
+            }
+        }
+        
+        .upload-area.dragover {
+            border-color: #4facfe;
+            background: #f0f9ff;
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            color: #4facfe;
+        }
+        
+        .upload-text {
+            font-size: 0.9rem;
+            color: #4a5568;
+            margin-bottom: 4px;
+        }
+        
+        .upload-hint {
+            font-size: 0.7rem;
+            color: #718096;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 8px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .btn {
+                background: linear-gradient(135deg, #63b3ed 0%, #3182ce 100%);
+            }
+            
+            .btn:hover {
+                box-shadow: 0 10px 20px rgba(99, 179, 237, 0.4);
+            }
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .btn-secondary:hover {
+            background: #cbd5e0;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .preview-section {
+            margin-top: 4px;
+            margin-bottom: 0px;
+            display: none;
+        }
+        
+        .preview-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .buttons-section {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .status-section {
+            display: flex;
+            align-items: center;
+        }
+        
+        .upload-success {
+            padding: 8px 15px;
+            background: #f0f9ff;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .upload-success {
+                background: #1e3a8a;
+            }
+        }
+        
+        .success-icon {
+            font-size: 1rem;
+            color: #10b981;
+        }
+        
+        .success-text {
+            font-size: 0.8rem;
+            color: #4a5568;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .success-text {
+                color: #e5e5e5;
+            }
+        }
+        
+        .processing-status {
+            padding: 8px 15px;
+            background: #fef3c7;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .processing-status {
+                background: #92400e;
+            }
+        }
+        
+        .processing-spinner {
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid #d97706;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            flex-shrink: 0; /* 防止在flex容器中被压缩 */
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .processing-spinner {
+                border-color: #4a5568;
+                border-top-color: #f59e0b;
+            }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .processing-text {
+            font-size: 0.8rem;
+            color: #d97706;
+            font-weight: 500;
+        }
+        
+        .completion-status {
+            padding: 8px 15px;
+            background: #d1fae5;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .completion-status {
+                background: #065f46;
+            }
+        }
+        
+        .completion-icon {
+            font-size: 1rem;
+            color: #10b981;
+        }
+        
+        .completion-text {
+            font-size: 0.8rem;
+            color: #059669;
+            font-weight: 500;
+        }
+        
+        .result-section {
+            margin-top: 0px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 15px;
+            display: none;
+            transition: background-color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .result-section {
+                background: #2d3748;
+            }
+        }
+        
+        .summary-section {
+            margin-bottom: 8px;
+            margin-top: -5px;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #4facfe;
+            transition: background-color 0.3s ease, border-left-color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .summary-section {
+                background: #1a202c;
+                border-left-color: #63b3ed;
+            }
+        }
+        
+        .summary-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            transition: color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .summary-title {
+                color: #e5e5e5;
+            }
+        }
+        
+        .summary-icon {
+            margin-right: 8px;
+            font-size: 1rem;
+        }
+        
+        .summary-content {
+            font-size: 0.8rem;
+            color: #4a5568;
+            line-height: 1.4;
+            transition: color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .summary-content {
+                color: #a0aec0;
+            }
+        }
+        
+        .result-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 2px;
+            margin-top: 0px;
+            display: flex;
+            align-items: center;
+            transition: color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .result-title {
+                color: #e5e5e5;
+            }
+        }
+        
+        .result-icon {
+            margin-right: 8px;
+            font-size: 1rem;
+        }
+        
+        .result-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #4facfe;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .success {
+            background: #c6f6d5;
+            color: #2f855a;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .fund-list {
+            margin-top: 1px;
+        }
+        
+        .fund-item {
+            background: white;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4facfe;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .fund-item {
+                background: #1a202c;
+                border-left-color: #63b3ed;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            }
+        }
+        
+        .fund-name {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 3px;
+            font-size: 0.8rem;
+            transition: color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .fund-name {
+                color: #e5e5e5;
+            }
+        }
+        
+        .fund-amount {
+            color: #4a5568;
+            font-size: 0.7rem;
+            transition: color 0.3s ease;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .fund-amount {
+                color: #a0aec0;
+            }
+        }
+        
+        .fund-error {
+            color: #e53e3e;
+            font-size: 0.7rem;
+            margin-top: 3px;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 4px;
+            }
+            
+            .content {
+                padding: 4px;
+            }
+            
+            .upload-area {
+                padding: 12px 10px;
+            }
+            
+            .upload-icon {
+                font-size: 1.8rem;
+            }
+            
+            .upload-text {
+                font-size: 0.8rem;
+            }
+            
+            .upload-hint {
+                font-size: 0.65rem;
+            }
+            
+            .btn {
+                padding: 8px 16px;
+                font-size: 0.75rem;
+                margin: 6px;
+            }
+            
+            .preview-content {
+                gap: 8px;
+            }
+            
+            .buttons-section {
+                gap: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📸</div>
+                    <div class="upload-text">点击或拖拽上传图片</div>
+                    <div class="upload-hint">支持 JPG、PNG、GIF 格式，建议图片清晰度较高</div>
+                    <input type="file" id="fileInput" accept="image/*">
+                </div>
+                
+                <div class="preview-section" id="previewSection">
+                    <div class="preview-content">
+                        <div class="buttons-section">
+                            <button class="btn" id="recognizeBtn">🔍 开始识别</button>
+                            <button class="btn btn-secondary" id="resetBtn">🔄 重新选择</button>
+                        </div>
+                        <div class="status-section">
+                            <div class="upload-success" id="uploadSuccess">
+                                <div class="success-icon">✅</div>
+                                <div class="success-text">图片上传成功！</div>
+                            </div>
+                            <div class="processing-status" id="processingStatus" style="display: none;">
+                                <div class="processing-spinner"></div>
+                                <div class="processing-text">正在识别图片中的文字...</div>
+                            </div>
+                            <div class="completion-status" id="completionStatus" style="display: none;">
+                                <div class="completion-icon">✅</div>
+                                <div class="completion-text">识别完成！</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            
+            <div class="error" id="errorMessage"></div>
+            <div class="success" id="successMessage"></div>
+            
+            <div class="result-section" id="resultSection">
+                <div class="summary-section" id="summarySection">
+                    <div class="summary-title" id="summaryTitle">
+                        <span class="summary-icon">📊</span>
+                        处理结果摘要
+                    </div>
+                    <div class="summary-content" id="summaryContent"></div>
+                </div>
+                
+                <div class="result-title">
+                    <span class="result-icon">❌</span>
+                    更新失败的基金
+                </div>
+                <div class="fund-list" id="fundList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('previewSection');
+        const recognizeBtn = document.getElementById('recognizeBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const resultSection = document.getElementById('resultSection');
+        const summaryContent = document.getElementById('summaryContent');
+        const fundList = document.getElementById('fundList');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const uploadSuccess = document.getElementById('uploadSuccess');
+        const processingStatus = document.getElementById('processingStatus');
+        const completionStatus = document.getElementById('completionStatus');
+        
+        let selectedFile = null;
+        let currentRequest = null; // 用于跟踪当前请求，支持中断
+        
+        // 点击上传区域
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // 文件选择
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        // 拖拽上传
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        // 识别按钮
+        recognizeBtn.addEventListener('click', recognizeText);
+        
+        // 重置按钮
+        resetBtn.addEventListener('click', resetUpload);
+        
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+        
+        function handleFile(file) {
+            // 检查文件类型
+            if (!file.type.startsWith('image/')) {
+                showError('请选择图片文件！');
+                return;
+            }
+            
+            // 检查文件大小 (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                showError('图片文件过大，请选择小于5MB的图片！');
+                return;
+            }
+            
+            // 如果正在处理，先中断当前请求
+            if (currentRequest) {
+                currentRequest.abort();
+                currentRequest = null;
+            }
+            
+            selectedFile = file;
+            
+            // 刷新所有状态
+            resetAllStates();
+            
+            // 显示上传成功提示
+            previewSection.style.display = 'block';
+            hideMessages();
+        }
+        
+        async function recognizeText() {
+            if (!selectedFile) {
+                showError('请先选择图片！');
+                return;
+            }
+            
+            // 切换显示状态：隐藏上传成功，显示处理中
+            uploadSuccess.style.display = 'none';
+            processingStatus.style.display = 'inline-flex';
+            completionStatus.style.display = 'none';
+            
+            resultSection.style.display = 'none';
+            recognizeBtn.disabled = true;
+            hideMessages();
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+                
+                // 创建可中断的请求
+                const controller = new AbortController();
+                currentRequest = controller;
+                
+                const response = await fetch('/api/ocr', {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal
+                });
+                
+                // 检查请求是否被中断
+                if (controller.signal.aborted) {
+                    return;
+                }
+                
+                const result = await response.json();
+                
+                // 再次检查请求是否被中断
+                if (controller.signal.aborted) {
+                    return;
+                }
+                
+                if (result.success) {
+                    // 显示完成状态
+                    processingStatus.style.display = 'none';
+                    completionStatus.style.display = 'inline-flex';
+                    
+                    displayResult(result.data);
+                } else {
+                    showError(result.error || '识别失败，请重试！');
+                    // 恢复显示状态
+                    uploadSuccess.style.display = 'inline-flex';
+                    processingStatus.style.display = 'none';
+                }
+                
+            } catch (error) {
+                // 如果是中断错误，不显示错误消息
+                if (error.name === 'AbortError') {
+                    console.log('请求被中断');
+                    return;
+                }
+                
+                console.error('识别错误:', error);
+                showError('网络错误，请检查连接后重试！');
+                // 恢复显示状态
+                uploadSuccess.style.display = 'inline-flex';
+                processingStatus.style.display = 'none';
+            } finally {
+                recognizeBtn.disabled = false;
+                // 清除当前请求引用
+                currentRequest = null;
+            }
+        }
+        
+        function displayResult(data) {
+            resultSection.style.display = 'block';
+            
+            // 显示处理结果摘要
+            displaySummary(data.notionSummary, data.date);
+            
+            // 只显示更新失败的基金
+            if (data.notionResults && data.notionResults.length > 0) {
+                displayFailedFunds(data.notionResults);
+            } else {
+                fundList.innerHTML = '<div class="fund-item">所有基金都已成功更新！</div>';
+            }
+        }
+        
+        function displaySummary(summary, date) {
+            if (!summary) {
+                summaryContent.innerHTML = '暂无处理结果';
+                return;
+            }
+            
+            // 格式化日期显示
+            let dateDisplay = '';
+            if (date && date.trim()) {
+                try {
+                    console.log('原始日期:', date);
+                    
+                    // 尝试多种日期格式解析
+                    let dateObj = null;
+                    
+                    // 1. 尝试直接解析
+                    dateObj = new Date(date);
+                    if (isNaN(dateObj.getTime())) {
+                        // 2. 尝试 YYYY-MM-DD 格式
+                        const dashMatch = date.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+                        if (dashMatch) {
+                            const year = parseInt(dashMatch[1]);
+                            const month = parseInt(dashMatch[2]) - 1; // 月份从0开始
+                            const day = parseInt(dashMatch[3]);
+                            dateObj = new Date(year, month, day);
+                        } else {
+                            // 3. 尝试 YYYY年MM月DD日 格式
+                            const chineseMatch = date.match(/(\d{4})年(\d{1,2})月(\d{1,2})日?/);
+                            if (chineseMatch) {
+                                const year = parseInt(chineseMatch[1]);
+                                const month = parseInt(chineseMatch[2]) - 1;
+                                const day = parseInt(chineseMatch[3]);
+                                dateObj = new Date(year, month, day);
+                            } else {
+                                // 4. 尝试 MM月DD日 格式（使用当前年份）
+                                const monthDayMatch = date.match(/(\d{1,2})月(\d{1,2})日?/);
+                                if (monthDayMatch) {
+                                    const currentYear = new Date().getFullYear();
+                                    const month = parseInt(monthDayMatch[1]) - 1;
+                                    const day = parseInt(monthDayMatch[2]);
+                                    dateObj = new Date(currentYear, month, day);
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (dateObj && !isNaN(dateObj.getTime())) {
+                        const year = dateObj.getFullYear();
+                        const month = dateObj.getMonth() + 1;
+                        const day = dateObj.getDate();
+                        dateDisplay = `${year}.${month}.${day}`;
+                        console.log('成功解析日期:', dateDisplay);
+                    } else {
+                        console.log('无法解析日期:', date);
+                        dateDisplay = '';
+                    }
+                } catch (e) {
+                    console.log('日期解析错误:', e);
+                    dateDisplay = '';
+                }
+            }
+            
+            // 更新标题
+            const summaryTitle = document.getElementById('summaryTitle');
+            if (dateDisplay) {
+                summaryTitle.innerHTML = `<span class="summary-icon">📊</span> ${dateDisplay}处理结果摘要`;
+            } else {
+                summaryTitle.innerHTML = `<span class="summary-icon">📊</span> 处理结果摘要`;
+            }
+            
+            const summaryText = `
+                总计: ${summary.total} 个基金<br>
+                ✅ 成功: ${summary.success} 个<br>
+                ❌ 失败: ${summary.failed} 个<br>
+                🔍 未匹配: ${summary.unmatched} 个<br>
+                ⏭️ 跳过: ${summary.skipped || 0} 个
+            `;
+            
+            summaryContent.innerHTML = summaryText;
+        }
+        
+        function displayFailedFunds(notionResults) {
+            fundList.innerHTML = '';
+            
+            // 筛选出失败的基金
+            const failedFunds = notionResults.filter(result => !result.success);
+            
+            if (failedFunds.length === 0) {
+                fundList.innerHTML = '<div class="fund-item">所有基金都已成功更新！</div>';
+                return;
+            }
+            
+            failedFunds.forEach(fund => {
+                const fundItem = document.createElement('div');
+                fundItem.className = 'fund-item';
+                fundItem.innerHTML = `
+                    <div class="fund-name">${fund.fundName}</div>
+                    <div class="fund-amount">金额: ${fund.amount}</div>
+                    <div class="fund-error">错误: ${fund.error}</div>
+                `;
+                fundList.appendChild(fundItem);
+            });
+        }
+        
+        function resetAllStates() {
+            // 隐藏结果区域
+            resultSection.style.display = 'none';
+            summaryContent.innerHTML = '';
+            fundList.innerHTML = '';
+            
+            // 重置状态显示
+            uploadSuccess.style.display = 'inline-flex';
+            processingStatus.style.display = 'none';
+            completionStatus.style.display = 'none';
+            
+            // 隐藏错误和成功消息
+            hideMessages();
+        }
+        
+        function resetUpload() {
+            // 如果正在处理，先中断当前请求
+            if (currentRequest) {
+                currentRequest.abort();
+                currentRequest = null;
+            }
+            
+            selectedFile = null;
+            fileInput.value = '';
+            previewSection.style.display = 'none';
+            resetAllStates();
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+        }
+        
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+        
+        function hideMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

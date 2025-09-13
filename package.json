@@ -1,0 +1,27 @@
+{
+  "name": "fund-ocr-client",
+  "version": "1.0.0",
+  "description": "基金OCR识别客户端 - 公开版本",
+  "main": "public-client.js",
+  "scripts": {
+    "start": "node public-client.js",
+    "dev": "node public-client.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "form-data": "^4.0.0",
+    "@notionhq/client": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "ocr",
+    "fund",
+    "notion",
+    "client"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

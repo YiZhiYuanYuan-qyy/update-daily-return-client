@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "public-client.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public-client.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/ocr",
+      "dest": "/public-client.js"
+    },
+    {
+      "src": "/health",
+      "dest": "/public-client.js"
+    },
+    {
+      "src": "/",
+      "dest": "/public-client.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public-client.html"
+    }
+  ]
+}
+
