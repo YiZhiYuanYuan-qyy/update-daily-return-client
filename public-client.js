@@ -34,7 +34,10 @@ const NOTION_CONFIG = {
 };
 
 // 初始化 Notion 客户端
-const notion = new Client({ auth: NOTION_CONFIG.token });
+const notion = new Client({
+  auth: NOTION_CONFIG.token,
+  notionVersion: '2025-09-03'   // 使用最新API版本
+});
 
 console.log('🌐 客户端服务器启动');
 console.log('🔗 代理服务器地址:', PROXY_SERVER_URL);
