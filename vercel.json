@@ -16,6 +16,10 @@
       "dest": "/public-client.js"
     },
     {
+      "src": "/api/get-key",
+      "dest": "/public-client.js"
+    },
+    {
       "src": "/health",
       "dest": "/public-client.js"
     },

@@ -10,7 +10,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: white;
@@ -27,7 +27,7 @@
                 color: #e5e5e5;
             }
         }
-        
+
         .container {
             max-width: 100%;
             margin: 0;
@@ -40,7 +40,7 @@
                 background: #1a1a1a;
             }
         }
-        
+
         .content {
             padding: 8px;
         }
@@ -48,7 +48,7 @@
         .upload-section {
             margin-bottom: 8px;
         }
-        
+
         .upload-area {
             border: 2px dashed #e2e8f0;
             border-radius: 10px;
@@ -58,7 +58,7 @@
             cursor: pointer;
             background: #f8fafc;
         }
-        
+
         .upload-area:hover {
             border-color: #4facfe;
             background: #f0f9ff;
@@ -76,34 +76,34 @@
                 background: #2a4365;
             }
         }
-        
+
         .upload-area.dragover {
             border-color: #4facfe;
             background: #f0f9ff;
             transform: scale(1.02);
         }
-        
+
         .upload-icon {
             font-size: 2rem;
             margin-bottom: 5px;
             color: #4facfe;
         }
-        
+
         .upload-text {
             font-size: 0.9rem;
             color: #4a5568;
             margin-bottom: 4px;
         }
-        
+
         .upload-hint {
             font-size: 0.7rem;
             color: #718096;
         }
-        
+
         #fileInput {
             display: none;
         }
-        
+
         .btn {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
             color: white;
@@ -116,7 +116,7 @@
             transition: all 0.3s ease;
             margin: 8px;
         }
-        
+
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
@@ -131,13 +131,13 @@
                 box-shadow: 0 10px 20px rgba(99, 179, 237, 0.4);
             }
         }
-        
+
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
-        
+
         .btn-secondary {
             background: #e2e8f0;
             color: #4a5568;
@@ -237,12 +237,12 @@
                 border-top-color: #f59e0b;
             }
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
+
         .processing-text {
             font-size: 0.8rem;
             color: #d97706;
@@ -494,13 +494,13 @@
     <div class="container">
         <div class="content">
             <div class="upload-section">
-                <div class="upload-area" id="uploadArea">
-                    <div class="upload-icon">📸</div>
-                    <div class="upload-text">点击或拖拽上传图片</div>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">点击或拖拽上传图片</div>
                     <div class="upload-hint">支持 JPG、PNG、GIF 格式，建议图片清晰度较高</div>
-                    <input type="file" id="fileInput" accept="image/*">
-                </div>
-                
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+
                 <div class="preview-section" id="previewSection">
                     <div class="preview-content">
                         <div class="buttons-section">
@@ -524,7 +524,7 @@
                     </div>
                 </div>
             </div>
-            
+
             
             <div class="error" id="errorMessage"></div>
             <div class="success" id="successMessage"></div>
@@ -561,15 +561,15 @@
         const uploadSuccess = document.getElementById('uploadSuccess');
         const processingStatus = document.getElementById('processingStatus');
         const completionStatus = document.getElementById('completionStatus');
-        
+
         let selectedFile = null;
         let currentRequest = null; // 用于跟踪当前请求，支持中断
-        
+
         // 点击上传区域
         uploadArea.addEventListener('click', () => {
             fileInput.click();
         });
-        
+
         // 文件选择
         fileInput.addEventListener('change', handleFileSelect);
         
@@ -578,11 +578,11 @@
             e.preventDefault();
             uploadArea.classList.add('dragover');
         });
-        
+
         uploadArea.addEventListener('dragleave', () => {
             uploadArea.classList.remove('dragover');
         });
-        
+
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
@@ -611,7 +611,7 @@
                 showError('请选择图片文件！');
                 return;
             }
-            
+
             // 检查文件大小 (5MB)
             if (file.size > 5 * 1024 * 1024) {
                 showError('图片文件过大，请选择小于5MB的图片！');
@@ -623,7 +623,7 @@
                 currentRequest.abort();
                 currentRequest = null;
             }
-            
+
             selectedFile = file;
             
             // 刷新所有状态
@@ -648,7 +648,7 @@
             resultSection.style.display = 'none';
             recognizeBtn.disabled = true;
             hideMessages();
-            
+
             try {
                 const formData = new FormData();
                 formData.append('image', selectedFile);
@@ -657,8 +657,19 @@
                 const controller = new AbortController();
                 currentRequest = controller;
                 
+                // 先获取API密钥
+                const keyResponse = await fetch('/api/get-key');
+                const keyData = await keyResponse.json();
+                
+                if (!keyData.hasKey) {
+                    throw new Error('服务器未配置API密钥');
+                }
+
                 const response = await fetch('/api/ocr', {
                     method: 'POST',
+                    headers: {
+                        'x-api-key': keyData.apiKey
+                    },
                     body: formData,
                     signal: controller.signal
                 });
@@ -687,7 +698,7 @@
                     uploadSuccess.style.display = 'inline-flex';
                     processingStatus.style.display = 'none';
                 }
-                
+
             } catch (error) {
                 // 如果是中断错误，不显示错误消息
                 if (error.name === 'AbortError') {
@@ -706,7 +717,7 @@
                 currentRequest = null;
             }
         }
-        
+
         function displayResult(data) {
             resultSection.style.display = 'block';
             

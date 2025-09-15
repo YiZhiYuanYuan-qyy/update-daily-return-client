@@ -26,6 +26,14 @@ const upload = multer({
 // 🌐 代理服务器地址 - 处理OCR和DeepSeek
 const PROXY_SERVER_URL = 'https://update-daily-return-proxy.vercel.app';
 
+// 🔑 API密钥验证配置
+const API_KEY_CONFIG = {
+  // 从环境变量获取API密钥
+  key: process.env.API_KEY || '',
+  // 强制启用密钥验证 - 必须提供有效密钥才能使用服务
+  enabled: true
+};
+
 // 🔐 Notion配置 - 在客户端服务器中处理
 const NOTION_CONFIG = {
   token: process.env.NOTION_TOKEN || '',
@@ -39,10 +47,29 @@ const notion = new Client({
   notionVersion: '2025-09-03'   // 使用最新API版本
 });
 
+// 🔑 API密钥验证函数
+function validateApiKey(apiKey) {
+  if (!apiKey) {
+    return { valid: false, reason: '缺少API密钥，请联系管理员～' };
+  }
+  
+  if (!API_KEY_CONFIG.key) {
+    return { valid: false, reason: '未配置API密钥' };
+  }
+  
+  if (API_KEY_CONFIG.key !== apiKey) {
+    return { valid: false, reason: 'API密钥不正确' };
+  }
+  
+  return { valid: true, reason: '验证通过' };
+}
+
 console.log('🌐 客户端服务器启动');
 console.log('🔗 代理服务器地址:', PROXY_SERVER_URL);
 console.log('📋 Notion配置:', NOTION_CONFIG.token ? '已设置' : '未设置');
 console.log('📋 数据库ID:', NOTION_CONFIG.databaseId);
+console.log('🔑 API密钥验证:', API_KEY_CONFIG.enabled ? '已启用' : '已禁用');
+console.log('📋 API密钥:', API_KEY_CONFIG.key ? '已设置' : '未设置');
 
 // 调用代理服务器的OCR接口
 async function callProxyOCR(imageBuffer) {
@@ -299,6 +326,21 @@ async function addFundDataToNotion(fundData, notionFunds) {
 // 🌐 公开的OCR接口 - 其他人可以调用这个接口
 app.post('/api/ocr', upload.single('image'), async (req, res) => {
   try {
+    // 🔑 API密钥验证
+    const apiKey = req.headers['x-api-key'] || req.body.apiKey;
+    const validation = validateApiKey(apiKey);
+    
+    if (!validation.valid) {
+      console.log('❌ API密钥验证失败:', validation.reason);
+      return res.status(401).json({
+        success: false,
+        error: `API密钥验证失败: ${validation.reason}`,
+        code: 'INVALID_API_KEY'
+      });
+    }
+    
+    console.log('✅ API密钥验证通过:', validation.reason);
+    
     if (!req.file) {
       return res.status(400).json({ 
         success: false, 
@@ -343,6 +385,14 @@ app.post('/api/ocr', upload.single('image'), async (req, res) => {
   }
 });
 
+// 获取API密钥接口（供前端使用）
+app.get('/api/get-key', (req, res) => {
+  res.json({ 
+    apiKey: API_KEY_CONFIG.key || '',
+    hasKey: !!API_KEY_CONFIG.key
+  });
+});
+
 // 健康检查接口
 app.get('/health', (req, res) => {
   res.json({ 
@@ -350,6 +400,10 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     message: '客户端服务器运行正常',
     proxyServer: PROXY_SERVER_URL,
+    apiKeyValidation: {
+      enabled: API_KEY_CONFIG.enabled,
+      configured: API_KEY_CONFIG.key ? true : false
+    },
     notion: {
       token: NOTION_CONFIG.token ? '已设置' : '未设置',
       databaseId: NOTION_CONFIG.databaseId || '未设置',
