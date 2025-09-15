@@ -657,19 +657,16 @@
                 const controller = new AbortController();
                 currentRequest = controller;
                 
-                // 先获取API密钥
+                // 检查API密钥配置状态
                 const keyResponse = await fetch('/api/get-key');
                 const keyData = await keyResponse.json();
                 
-                if (!keyData.hasKey) {
-                    throw new Error('服务器未配置API密钥');
+                if (!keyData.configured) {
+                    throw new Error(keyData.reason);
                 }
 
                 const response = await fetch('/api/ocr', {
                     method: 'POST',
-                    headers: {
-                        'x-api-key': keyData.apiKey
-                    },
                     body: formData,
                     signal: controller.signal
                 });

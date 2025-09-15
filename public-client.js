@@ -24,14 +24,18 @@ const upload = multer({
 });
 
 // 🌐 代理服务器地址 - 处理OCR和DeepSeek
-const PROXY_SERVER_URL = 'https://update-daily-return-proxy.vercel.app';
+const PROXY_SERVER_URL = 'https://update-daily-return-proxy-h11zoihhp-yizhiyuanyuans-projects.vercel.app';
 
-// 🔑 API密钥验证配置
+// 🔓 Vercel认证绕过密钥 - 客户端服务器的bypass secret
+const VERCEL_BYPASS_SECRET = 'gzAlcWhz4m95PQwZfSGYH35bSe7pPHvN';
+
+// 🔓 代理服务器的bypass secret
+const PROXY_BYPASS_SECRET = 'yZya01XGcGVYy3rm6kmDAz4Rc9rOXul4';
+
+// 🔑 API密钥配置 - 从环境变量获取客户的API密钥
 const API_KEY_CONFIG = {
-  // 从环境变量获取API密钥
-  key: process.env.API_KEY || '',
-  // 强制启用密钥验证 - 必须提供有效密钥才能使用服务
-  enabled: true
+  // 客户的API密钥，从环境变量获取
+  key: process.env.API_KEY || ''
 };
 
 // 🔐 Notion配置 - 在客户端服务器中处理
@@ -47,29 +51,20 @@ const notion = new Client({
   notionVersion: '2025-09-03'   // 使用最新API版本
 });
 
-// 🔑 API密钥验证函数
-function validateApiKey(apiKey) {
-  if (!apiKey) {
-    return { valid: false, reason: '缺少API密钥，请联系管理员～' };
-  }
-  
+// 🔑 检查API密钥是否已配置
+function checkApiKeyConfigured() {
   if (!API_KEY_CONFIG.key) {
-    return { valid: false, reason: '未配置API密钥' };
+    return { configured: false, reason: '未配置API密钥，请在环境变量中设置API_KEY' };
   }
-  
-  if (API_KEY_CONFIG.key !== apiKey) {
-    return { valid: false, reason: 'API密钥不正确' };
-  }
-  
-  return { valid: true, reason: '验证通过' };
+  return { configured: true, reason: 'API密钥已配置' };
 }
 
 console.log('🌐 客户端服务器启动');
 console.log('🔗 代理服务器地址:', PROXY_SERVER_URL);
 console.log('📋 Notion配置:', NOTION_CONFIG.token ? '已设置' : '未设置');
 console.log('📋 数据库ID:', NOTION_CONFIG.databaseId);
-console.log('🔑 API密钥验证:', API_KEY_CONFIG.enabled ? '已启用' : '已禁用');
-console.log('📋 API密钥:', API_KEY_CONFIG.key ? '已设置' : '未设置');
+console.log('🔑 客户API密钥:', API_KEY_CONFIG.key ? '已设置' : '未设置');
+console.log('🔍 API密钥值:', API_KEY_CONFIG.key ? API_KEY_CONFIG.key.substring(0, 10) + '...' : 'undefined');
 
 // 调用代理服务器的OCR接口
 async function callProxyOCR(imageBuffer) {
@@ -90,10 +85,16 @@ async function callProxyOCR(imageBuffer) {
       path: url.pathname,
       method: 'POST',
       headers: {
-        ...form.getHeaders()
+        'x-api-key': API_KEY_CONFIG.key,  // 传递客户的API密钥给代理服务器
+        'x-vercel-protection-bypass': PROXY_BYPASS_SECRET,  // 代理服务器的bypass secret
+        'x-vercel-set-bypass-cookie': 'true',  // 设置bypass cookie
+        ...form.getHeaders()  // FormData头部放在最后，避免覆盖自定义头部
       },
       timeout: 60000 // 60秒超时
     };
+    
+    // 调试：打印请求头
+    console.log('🔍 发送请求头:', options.headers);
 
     const req = https.request(options, (res) => {
       let responseData = '';
@@ -103,6 +104,84 @@ async function callProxyOCR(imageBuffer) {
       });
       
       res.on('end', () => {
+        // 处理重定向
+        if (res.statusCode === 307 && res.headers.location) {
+          console.log('🔄 检测到重定向，重新请求:', res.headers.location);
+          
+          // 重新创建FormData，因为原来的已经被消耗了
+          const FormData = require('form-data');
+          const newForm = new FormData();
+          newForm.append('image', imageBuffer, {
+            filename: 'image.jpg',
+            contentType: 'image/jpeg'
+          });
+          
+          // 重新请求重定向的URL
+          const redirectUrl = new URL(res.headers.location, PROXY_SERVER_URL);
+          
+          // 提取cookie
+          const cookies = res.headers['set-cookie'] || [];
+          const cookieHeader = cookies.map(cookie => cookie.split(';')[0]).join('; ');
+          
+          const redirectOptions = {
+            hostname: redirectUrl.hostname,
+            port: redirectUrl.port || (redirectUrl.protocol === 'https:' ? 443 : 80),
+            path: redirectUrl.pathname,
+            method: 'POST',
+            headers: {
+              'x-api-key': API_KEY_CONFIG.key,
+              'x-vercel-protection-bypass': PROXY_BYPASS_SECRET,
+              'x-vercel-set-bypass-cookie': 'true',
+              'cookie': cookieHeader,  // 携带cookie
+              ...newForm.getHeaders()  // FormData头部放在最后，避免覆盖自定义头部
+            },
+            timeout: 120000 // 增加超时时间到2分钟
+          };
+          
+          console.log('🍪 携带cookie:', cookieHeader);
+          
+          console.log('🔄 发送重定向请求...');
+          const redirectReq = https.request(redirectOptions, (redirectRes) => {
+            let redirectData = '';
+            
+            redirectRes.on('data', (chunk) => {
+              redirectData += chunk;
+            });
+            
+            redirectRes.on('end', () => {
+              console.log('✅ 重定向请求完成');
+              try {
+                const result = JSON.parse(redirectData);
+                if (redirectRes.statusCode === 200) {
+                  resolve(result);
+                } else {
+                  reject(new Error(`代理服务器错误: ${redirectRes.statusCode} - ${result.error || redirectData}`));
+                }
+              } catch (e) {
+                console.log('🔍 重定向后响应调试信息:');
+                console.log('📊 状态码:', redirectRes.statusCode);
+                console.log('📋 响应头:', redirectRes.headers);
+                console.log('📄 完整响应数据:', redirectData);
+                reject(new Error(`重定向后响应格式错误: ${e.message}，响应内容: ${redirectData}`));
+              }
+            });
+          });
+          
+          redirectReq.on('error', (error) => {
+            console.log('❌ 重定向请求错误:', error.message);
+            reject(new Error('重定向请求失败: ' + error.message));
+          });
+          
+          redirectReq.on('timeout', () => {
+            console.log('⏰ 重定向请求超时');
+            redirectReq.destroy();
+            reject(new Error('重定向请求超时'));
+          });
+          
+          newForm.pipe(redirectReq);
+          return;
+        }
+        
         try {
           const result = JSON.parse(responseData);
           if (res.statusCode === 200) {
@@ -111,7 +190,21 @@ async function callProxyOCR(imageBuffer) {
             reject(new Error(`代理服务器错误: ${res.statusCode} - ${result.error || responseData}`));
           }
         } catch (e) {
-          reject(new Error('代理服务器响应格式错误: ' + e.message));
+          // 打印详细的调试信息
+          console.log('🔍 代理服务器响应调试信息:');
+          console.log('📊 状态码:', res.statusCode);
+          console.log('📋 响应头:', res.headers);
+          console.log('📄 完整响应数据:', responseData);
+          console.log('❌ JSON解析错误:', e.message);
+          
+          // 如果不是JSON，直接返回错误信息
+          if (responseData.includes('<!doctype') || responseData.includes('<html')) {
+            reject(new Error(`代理服务器返回HTML页面 (状态码: ${res.statusCode})，可能是认证问题或服务器错误。响应内容: ${responseData}`));
+          } else if (responseData.includes('Redirecting')) {
+            reject(new Error(`代理服务器返回重定向响应 (状态码: ${res.statusCode})，响应内容: ${responseData}`));
+          } else {
+            reject(new Error(`代理服务器响应格式错误: ${e.message}，响应内容: ${responseData}`));
+          }
         }
       });
     });
@@ -326,20 +419,19 @@ async function addFundDataToNotion(fundData, notionFunds) {
 // 🌐 公开的OCR接口 - 其他人可以调用这个接口
 app.post('/api/ocr', upload.single('image'), async (req, res) => {
   try {
-    // 🔑 API密钥验证
-    const apiKey = req.headers['x-api-key'] || req.body.apiKey;
-    const validation = validateApiKey(apiKey);
+    // 🔑 检查API密钥是否已配置
+    const keyCheck = checkApiKeyConfigured();
     
-    if (!validation.valid) {
-      console.log('❌ API密钥验证失败:', validation.reason);
-      return res.status(401).json({
+    if (!keyCheck.configured) {
+      console.log('❌ API密钥未配置:', keyCheck.reason);
+      return res.status(400).json({
         success: false,
-        error: `API密钥验证失败: ${validation.reason}`,
-        code: 'INVALID_API_KEY'
+        error: `配置错误: ${keyCheck.reason}`,
+        code: 'API_KEY_NOT_CONFIGURED'
       });
     }
     
-    console.log('✅ API密钥验证通过:', validation.reason);
+    console.log('✅ API密钥已配置，转发到代理服务器验证');
     
     if (!req.file) {
       return res.status(400).json({ 
@@ -385,24 +477,26 @@ app.post('/api/ocr', upload.single('image'), async (req, res) => {
   }
 });
 
-// 获取API密钥接口（供前端使用）
+// 获取API密钥状态接口（供前端使用）
 app.get('/api/get-key', (req, res) => {
+  const keyCheck = checkApiKeyConfigured();
   res.json({ 
-    apiKey: API_KEY_CONFIG.key || '',
-    hasKey: !!API_KEY_CONFIG.key
+    configured: keyCheck.configured,
+    reason: keyCheck.reason
   });
 });
 
 // 健康检查接口
 app.get('/health', (req, res) => {
+  const keyCheck = checkApiKeyConfigured();
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
     message: '客户端服务器运行正常',
     proxyServer: PROXY_SERVER_URL,
-    apiKeyValidation: {
-      enabled: API_KEY_CONFIG.enabled,
-      configured: API_KEY_CONFIG.key ? true : false
+    apiKey: {
+      configured: keyCheck.configured,
+      reason: keyCheck.reason
     },
     notion: {
       token: NOTION_CONFIG.token ? '已设置' : '未设置',
